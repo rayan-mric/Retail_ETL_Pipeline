@@ -15,10 +15,11 @@ def log(message):
 
 def extract():
     log("Extracting raw data.")
-    df = pd.read_csv(DATA_PATH, encoding="ISO-8859-1")
+    df = pd.read_csv(DATA_PATH)
     return df
 
 def transform(df):
+    log("Trabsforming Data.")
     df = df[~df['InvoiceNo'].astype(str).str.startswith('C')]
     df = df[(df['Quantity'] > 0) & (df['UnitPrice'] > 0)]
     df['CustomerID'] = df['CustomerID'].fillna(0).astype(int)
@@ -88,19 +89,16 @@ def visualize(monthly, top_products):
     axes[1].set_title('Top 10 Products by Revenue')
     axes[1].set_xlabel('Revenue ($)')
     axes[1].set_ylabel('Product')
-
     plt.tight_layout()
     plt.show()
 
 
 def main():
     log("ETL pipeline started.")
-
     raw_df = extract()
     df, monthly, country, top_products, customer, gold_customers = transform(raw_df)
     load(df, monthly, country, top_products, customer, gold_customers)
     visualize(monthly, top_products)
-
     log("ETL pipeline completed successfully.")
 
 if __name__ == "__main__":
