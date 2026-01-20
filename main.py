@@ -62,25 +62,28 @@ def transform(df):
     ).reset_index(drop=True)
     gold_customers['Gold_Tier'] = 'Yes'
 
+    # Customer repeat rate
+    repeat_customers = customer[customer['Orders'] > 1]
+    repeat_rate = len(repeat_customers) / len(customer) * 100
+    log(f"Customer Repeat Rate: {repeat_rate:.2f}%")
+
     return df, monthly, country, top_products, customer, gold_customers
 
 # ---------------- LOAD ---------------- #
 def load(df, monthly, country, top_products, customer, gold_customers):
     conn = sqlite3.connect(DB_NAME)
+
+    # Raw data
     df.to_sql(TABLE_NAME, conn, if_exists="replace", index=False)
+    # Aggregates
     monthly.to_sql("agg_monthly_sales", conn, if_exists="replace", index=False)
     country.to_sql("agg_country_sales", conn, if_exists="replace", index=False)
     top_products.to_sql("top_products", conn, if_exists="replace", index=False)
     customer.to_sql("agg_customer_sales", conn, if_exists="replace", index=False)
     gold_customers.to_sql("gold_customers", conn, if_exists="replace", index=False)
-    conn.close()
 
-    # Export CSVs
-    monthly.to_csv("agg_monthly_sales.csv", index=False)
-    country.to_csv("agg_country_sales.csv", index=False)
-    top_products.to_csv("top_products.csv", index=False)
-    customer.to_csv("agg_customer_sales.csv", index=False)
-    gold_customers.to_csv("gold_customers.csv", index=False)
+    conn.close()
+    log("All data loaded into SQLite database successfully.")
 
 # ---------------- VISUALIZE ---------------- #
 def visualize(monthly, top_products):
@@ -91,7 +94,7 @@ def visualize(monthly, top_products):
     # Map InvoiceDate to month names
     monthly['Month'] = pd.to_datetime(monthly['InvoiceDate']).dt.month.apply(lambda x: calendar.month_name[x])
 
-    # Aggregate by month name in order
+    # Aggregate revenue by month name in order
     monthly_grouped = monthly.groupby('Month')['Revenue'].sum().reindex(months_order).reset_index()
 
     fig, axes = plt.subplots(1, 2, figsize=(14, 5))
@@ -116,10 +119,12 @@ def visualize(monthly, top_products):
 # ---------------- MAIN ---------------- #
 def main():
     log("ETL pipeline started.")
+
     raw_df = extract()
     df, monthly, country, top_products, customer, gold_customers = transform(raw_df)
     load(df, monthly, country, top_products, customer, gold_customers)
     visualize(monthly, top_products)
+
     log("ETL pipeline completed successfully.")
 
 if __name__ == "__main__":
